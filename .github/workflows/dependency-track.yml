@@ -1,0 +1,38 @@
+name: Dependency-Track
+
+# SBOM (CycloneDX) per mise, upload to the production Dependency-Track on every new full release (no prereleases).
+
+on:
+  release:
+    types: [released]
+
+permissions:
+  contents: read
+
+jobs:
+  sbom:
+    name: SBOM to Dependency-Track
+    runs-on: [k8s-development-runner-set]
+    steps:
+      - name: Setup Mise
+        uses: atacama-blooms-gmbh-co-kg/composite-actions-and-workflows/.github/actions/setup/mise-setup@v1
+        with:
+          checkout_token: ${{ secrets.SEMANTIC_RELEASE_TOKEN }}
+
+      - uses: atacama-blooms-gmbh-co-kg/composite-actions-and-workflows/.github/actions/setup/checkout@v1
+
+      - name: Install project tools
+        run: mise install
+
+      - name: Generate SBOM
+        uses: atacama-blooms-gmbh-co-kg/composite-actions-and-workflows/.github/actions/security/sbom@v1
+        with:
+          tool: cdxgen
+
+      - name: Upload SBOM to Dependency-Track
+        uses: atacama-blooms-gmbh-co-kg/composite-actions-and-workflows/.github/actions/security/dependency-track@v1
+        with:
+          api_key: ${{ secrets.DEPENDENCYTRACK_APIKEY }}
+          root_cert: ${{ secrets.ATACAMA_ROOT_CRT }}
+          project_name: ${{ github.repository }}
+          project_version: ${{ github.ref_name }}
